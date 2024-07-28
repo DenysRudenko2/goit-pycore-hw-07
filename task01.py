@@ -1,6 +1,6 @@
 from collections import UserDict
 import re
-import datetime
+import datetime as dt
 from datetime import datetime
 
 
@@ -36,12 +36,11 @@ class Phone(Field):
 
 class Birthday(Field):
     def __init__(self, value):
+        pattern = re.compile(r"^\d{2}-\d{2}-\d{4}$")
+        if not pattern.match(value):
+            raise ValueError("Invalid date format. Use DD-MM-YYYY")
         try:
-            pattern = re.compile(r"^\d{2}-\d{2}-\d{4}$")
-            if not pattern.match(value):
-                raise ValueError("Invalid date format. Use DD-MM-YYYY")
-
-            super().__init__(datetime.strptime(value, '%m-%d-%Y').date())
+            super().__init__(value)
         except ValueError:
             raise ValueError("Invalid date format. Use DD-MM-YYYY")
 
@@ -92,15 +91,18 @@ class AddressBook(UserDict):
     def get_upcoming_birthdays(self):
         celebrators = []
         for user in self.data.values():
-            parsed_birthday = user.birthday
-            today = datetime.date.today()
+            if user.birthday is None:
+                continue
+
+            parsed_birthday = dt.datetime.strptime(user.birthday.value, '%d-%m-%Y').date()
+            today = dt.date.today()
 
             # Add a day or two for congratulation date if birthday is on a weekend:
             def calculate_congrats_day(date: datetime.date):
                 if date.weekday() == 5:
-                    return date + datetime.timedelta(days=2)
+                    return date + dt.timedelta(days=2)
                 elif date.weekday() == 6:
-                    return date + datetime.timedelta(days=1)
+                    return date + dt.timedelta(days=1)
                 return date
 
             # Check b-day this year:
@@ -108,7 +110,7 @@ class AddressBook(UserDict):
             if this_year_birthday >= today:
                 if 0 <= (this_year_birthday - today).days <= 7:
                     this_year_birthday = calculate_congrats_day(this_year_birthday)
-                    celebrators.append({'name': user['name'], 'congratulation_date': this_year_birthday})
+                    celebrators.append({'name': user.name.value, 'congratulation_date': this_year_birthday.__str__()})
                 continue
 
             # Check if less than 7 days left to the new year:
@@ -119,7 +121,7 @@ class AddressBook(UserDict):
                     next_year_birthday = calculate_congrats_day(next_year_birthday)
                     celebrators.append({'name': user['name'], 'congratulation_date': next_year_birthday})
 
-        return celebrators
+        print(celebrators)
 
 
 def parse_input(user_input):
